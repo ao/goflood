@@ -9,4 +9,26 @@ Packaged binaries for all platforms are available on the [GoFlood Github Release
 
 ## Usage once Downloaded/Installed
 
-`goflood example.com 10`
+### Option 1: Follow the wizard
+
+You can simply run the CLI application and follow the prompts
+
+```
+./goflood
+```
+
+### Option 2: Specify the arguments
+
+```
+./goflood example.com   10       1
+          ^             ^        ^
+          domain        count    batch
+```
+
+#### Commandline Arguments
+
+| argument | description | example value |
+|----------|-------------|-------|
+| domain   | a domain name | example.com
+| count    | amount of concurrent reqs | 50 |
+| batch    | amount of times to repeat | 3 |
