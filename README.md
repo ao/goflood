@@ -21,3 +21,4 @@ goflood
 ```
 goflood -url=https://example.com -concurrency=500 -step=50 -duration=1m15s
 ```
+
