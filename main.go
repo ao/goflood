@@ -1,86 +1,120 @@
 package main
 
 import (
+	"flag"
 	"fmt"
-	"github.com/ao/goflood/helper"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
-	"strconv"
+	"os/signal"
 	"sync"
+	"sync/atomic"
+	"syscall"
+	"time"
 )
 
-func call(wg *sync.WaitGroup, domain string, userAgent string) {
+func Banner() string {
+	return `
+  ▄████  ▒█████    █████▒██▓     ▒█████   ▒█████  ▓█████▄ 
+ ██▒ ▀█▒▒██▒  ██▒▓██   ▒▓██▒    ▒██▒  ██▒▒██▒  ██▒▒██▀ ██▌
+▒██░▄▄▄░▒██░  ██▒▒████ ░▒██░    ▒██░  ██▒▒██░  ██▒░██   █▌
+░▓█  ██▓▒██   ██░░▓█▒  ░▒██░    ▒██   ██░▒██   ██░░▓█▄   ▌
+░▒▓███▀▒░ ████▓▒░░▒█░   ░██████▒░ ████▓▒░░ ████▓▒░░▒████▓ 
+ ░▒   ▒ ░ ▒░▒░▒░  ▒ ░   ░ ▒░▓  ░░ ▒░▒░▒░ ░ ▒░▒░▒░  ▒▒▓  ▒ 
+  ░   ░   ░ ▒ ▒░  ░     ░ ░ ▒  ░  ░ ▒ ▒░   ░ ▒ ▒░  ░ ▒  ▒ 
+░ ░   ░ ░ ░ ░ ▒   ░ ░     ░ ░   ░ ░ ░ ▒  ░ ░ ░ ▒   ░ ░  ░ 
+      ░     ░ ░             ░  ░    ░ ░      ░ ░     ░    
+                                                   ░
+`
+}
+
+func makeRequest(targetURL string, counter *int32, wg *sync.WaitGroup) {
+	defer atomic.AddInt32(counter, -1)
 	defer wg.Done()
 
-	client := &http.Client{}
+	start := time.Now()
 
-	req, err := http.NewRequest("GET", "http://"+domain, nil)
+	resp, err := http.Get(targetURL)
 	if err != nil {
-		log.Fatalln(err)
+		log.Printf("Error making request: %v\n", err)
+		return
 	}
-
-	req.Header.Set("User-Agent", userAgent)
-
-	resp, err := client.Do(req)
-	if err != nil {
-		log.Fatalln(err)
-	}
-
 	defer resp.Body.Close()
-	_, err = ioutil.ReadAll(resp.Body)
-	if err != nil {
-		log.Fatalln(err)
+
+	// Process response if needed
+
+	if resp.StatusCode == http.StatusOK {
+		// Successful response handling
+		// You can add more metrics or processing here
 	}
 
-	fmt.Print(".")
+	// Print request duration
+	fmt.Printf("Request to %s took %s\n", targetURL, time.Since(start))
 }
 
 func main() {
-	fmt.Println(helper.Banner())
+	fmt.Println(Banner())
+
+	var targetURL string
+	var baseConcurrency, concurrencyStep int
+	var duration time.Duration
+	var showHelp bool
+
+	flag.StringVar(&targetURL, "url", "", "Target URL")
+	flag.IntVar(&baseConcurrency, "concurrency", 10, "Base Concurrency")
+	flag.IntVar(&concurrencyStep, "step", 1, "Concurrency Step")
+	flag.DurationVar(&duration, "duration", 10*time.Second, "Duration for which the program should run")
+	flag.BoolVar(&showHelp, "help", false, "Show help")
+
+	flag.Parse()
+
+	if targetURL == "" {
+		fmt.Println("Please specify a target URL")
+		flag.Usage()
+		os.Exit(0)
+	}
+
+	if showHelp {
+		flag.Usage()
+		os.Exit(0)
+	}
+
 	var wg sync.WaitGroup
+	var counter int32
 
-	var domain string
-	var count int
-	var batch int
+	// Interrupt handling for graceful shutdown
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
 
-	userAgents := map[string]string {
-		"0": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/95.0.4638.54 Safari/537.36",
-		"1": "Mozilla/5.0 (Macintosh; Intel Mac OS X 12_0_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/95.0.4638.54 Safari/537.36",
-		"2": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/95.0.4638.54 Safari/537.36",
-		"3": "Mozilla/5.0 (iPhone; CPU iPhone OS 15_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/95.0.4638.50 Mobile/15E148 Safari/604.1",
-		"4": "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/95.0.4638.50 Mobile Safari/537.36",
-	}
+	go func() {
+		<-stop
+		wg.Wait() // Wait for ongoing requests to finish
+		os.Exit(0)
+	}()
 
-	args := os.Args
-	if len(args)<4 {
+	startTime := time.Now()
 
-		fmt.Println("Enter a domain name (example.com): ")
-		fmt.Scanln(&domain)
+	timer := time.NewTimer(duration)
 
-		fmt.Println("Enter a count (10): ")
-		fmt.Scanln(&count)
-
-		fmt.Println("Enter a batch: (1): ")
-		fmt.Scanln(&batch)
-	} else {
-		domain = args[1]
-		count, _ = strconv.Atoi(args[2])
-		batch, _ = strconv.Atoi(args[3])
-	}
-
-	fmt.Println("Flooding "+domain+" "+strconv.Itoa(count)+" times, in "+strconv.Itoa(batch)+" batches")
-
-	for i := 1; i <= batch; i++ {
-		fmt.Println("Batch #"+strconv.Itoa(i))
-		wg.Add(count)
-		for i := 0; i < count; i++ {
-			go call(&wg, domain, userAgents["0"])
+	for concurrency := baseConcurrency; concurrency <= baseConcurrency+concurrencyStep; concurrency += concurrencyStep {
+		for i := 0; i < concurrency; i++ {
+			wg.Add(1)
+			atomic.AddInt32(&counter, 1)
+			go makeRequest(targetURL, &counter, &wg)
 		}
-		wg.Wait()
-		fmt.Println("Done")
 	}
 
-	fmt.Println("Complete")
+	<-timer.C // Wait for the specified duration
+
+	// Wait until all requests are done
+	for atomic.LoadInt32(&counter) > 0 {
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	elapsed := time.Since(startTime)
+
+	fmt.Printf("Target URL: %s\n", targetURL)
+	fmt.Printf("Base Concurrency: %d\n", baseConcurrency)
+	fmt.Printf("Concurrency Step: %d\n", concurrencyStep)
+	fmt.Printf("Duration: %s\n", elapsed)
 }
