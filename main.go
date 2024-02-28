@@ -52,6 +52,10 @@ func makeRequest(targetURL string, counter *int32, wg *sync.WaitGroup) {
 	fmt.Printf("Request to %s took %s\n", targetURL, time.Since(start))
 }
 
+// main is the entry point for the load testing program. It parses command
+// line flags, sets up interrupt handling for graceful shutdown, starts a
+// specified number of goroutines to make requests to the target URL, and
+// prints metrics after the specified duration.
 func main() {
 	fmt.Println(Banner())
 

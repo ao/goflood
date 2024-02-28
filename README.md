@@ -6,7 +6,6 @@ A simple CLI tool that lets you make GET requests to a domain, and ignores the o
 
 Packaged binaries for all platforms are available on the [GoFlood Github Release page](https://github.com/ao/goflood/releases/)
 
-
 ## Usage once Downloaded/Installed
 
 ### Option 1: Follow the wizard
@@ -14,21 +13,11 @@ Packaged binaries for all platforms are available on the [GoFlood Github Release
 You can simply run the CLI application and follow the prompts
 
 ```
-./goflood
+goflood
 ```
 
 ### Option 2: Specify the arguments
 
 ```
-./goflood example.com   10       1
-          ^             ^        ^
-          domain        count    batch
+goflood -url=https://example.com -concurrency=500 -step=50 -duration=1m15s
 ```
-
-#### Commandline Arguments
-
-| argument | description | example value |
-|----------|-------------|-------|
-| domain   | a domain name | example.com
-| count    | amount of concurrent reqs | 50 |
-| batch    | amount of times to repeat | 3 |
