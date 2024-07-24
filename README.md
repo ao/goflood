@@ -19,5 +19,5 @@ goflood
 ### Option 2: Specify the arguments
 
 ```
-goflood -url=https://example.com -concurrency=500 -step=50 -duration=1m15s
+goflood -url https://example.com -n 10 -t 1m15s
 ```
