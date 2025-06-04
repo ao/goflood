@@ -1,3 +1,5 @@
+> This tool is deprecated in favour of [Tide](https://ataiva.com/tide) which ships with many improvements and added features and funtionality.
+
 # GoFlood
 
 A simple CLI tool that lets you make GET requests to a domain, and ignores the output
